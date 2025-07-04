@@ -127,8 +127,16 @@
       });
     }
 
-    div.appendChild(qrContainer);
-    resultsDiv.appendChild(div);
+// Hacer que sea clickeable
+div.style.cursor = "pointer";
+div.style.border = "1px solid #ddd";
+
+div.addEventListener("click", () => {
+  window.location.href = `detalles_producto.html?ean=${encodeURIComponent(item.EAN)}`;
+});
+
+div.appendChild(qrContainer);
+resultsDiv.appendChild(div);
   });
 }
 </script>
