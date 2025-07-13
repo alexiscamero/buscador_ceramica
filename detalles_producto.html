@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalles del Producto</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f7f7f7;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1em;
+      text-align: center;
+    }
+    .back-btn {
+      display: inline-block;
+      margin: 1em;
+      padding: 0.6em 1em;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 0.95em;
+    }
+    .container {
+      padding: 1em;
+      background: white;
+      margin: 0 1em 2em 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .field {
+      margin-bottom: 0.5em;
+    }
+    .label {
+      font-weight: bold;
+    }
+    a.link-bd {
+      color: #2980b9;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Detalles del Producto</h1>
+</header>
+
+<a href="index.html" class="back-btn">← Regresar al buscador</a>
+
+<div class="container" id="productDetails">
+  <p>Cargando datos...</p>
+</div>
+
+<!-- PapaParse -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js "></script>
+
+<script>
+  // Obtener el EAN desde la URL
+  const params = new URLSearchParams(window.location.search);
+  const ean = params.get("ean");
+
+  if (!ean) {
+    document.getElementById("productDetails").innerHTML = "<p>No se proporcionó un EAN.</p>";
+    throw new Error("No se encontró el EAN");
+  }
+
+  let productosBasicos = [];
+  let productosDetalle1 = [];
+  let productosDetalle2 = [];
+
+  // Cargar ceramica_proyecto.csv (descripción del producto)
+  Papa.parse("ceramica_proyecto.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    delimiter: ";",
+    complete: function(results) {
+      productosBasicos = results.data;
+
+      // Cargar bricodepot_productos_detalle.csv
+      Papa.parse("bricodepot_productos_detalle.csv", {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ";",
+        complete: function(detalle1Results) {
+          productosDetalle1 = detalle1Results.data;
+
+          // Cargar bricodepot_productos_detalle_laminados.csv
+          Papa.parse("bricodepot_productos_detalle_laminados.csv", {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            delimiter: ";",
+            complete: function(detalle2Results) {
+              productosDetalle2 = detalle2Results.data;
+
+              // Buscar en ambos archivos
+              const detalle1 = productosDetalle1.find(p => p["Código EAN"] === ean);
+              const detalle2 = productosDetalle2.find(p => p["Código EAN"] === ean);
+
+              const container = document.getElementById("productDetails");
+
+              if (!detalle1 && !detalle2) {
+                container.innerHTML = `<p>No se encontraron detalles para el EAN: ${ean}</p>`;
+                return;
+              }
+
+              // Combinar datos
+              const productoCompleto = { ...detalle1, ...detalle2 };
+
+              // Obtener descripción del producto base
+              const basico = productosBasicos.find(p => p.EAN === ean);
+              const descripcion = basico?.descrpcion_es || "Sin descripción";
+
+              // Campos a mostrar
+              const camposAMostrar = {
+                "URL": "Ficha del producto",
+                "Código EAN": "Código EAN",
+                "Alto de producto": "Alto de producto",
+                "Longitud de producto": "Longitud del producto",
+                "Ancho de producto": "Ancho de producto",
+                "Espesor de producto": "Espesor de producto",
+                "Peso del producto": "Peso del producto",
+                "Cobertura": "Cobertura",
+                "Cobertura por paquete (m2)": "Cobertura por paquete",
+                "Unidades del pack": "Unidades del pack",
+                "Material": "Material",
+                "Rectificado": "Rectificado",
+                "Interior/Exterior/Ambos": "Interior/Exterior/Ambos",
+                "Antihielo": "Antihielo",
+                "Escala MOHS": "Escala MOHS",
+                "Nivel de tránsito": "Nivel de tránsito",
+                "Antiestático": "Antiestático",
+                "Apto para sistemas de calefacción por suelo radiante": "Apto para sistemas de calefacción por suelo radiante",
+                "Borde biselado": "Borde biselado",
+                "Resistencia a desgaste": "Resistencia a desgaste",
+                "Resistente al agua": "Resistente al agua",
+                "Clases de utilización": "Clases de utilización",
+                "Restricciones de uso": "Restricciones de uso",
+                "Sistema de encaje": "Sistema de encaje",
+                "Resistente a las manchas": "Resistente a las manchas",
+                "Aislante incorporado": "Aislante incorporado"
+              };
+
+              // Mostrar información
+              let html = `<h2>${descripcion}</h2>`;
+
+              for (let key in camposAMostrar) {
+                const label = camposAMostrar[key];
+                const value = productoCompleto[key];
+
+                if (value && value.trim() !== "") {
+                  if (key === "URL") {
+                    html += `
+                      <div class="field">
+                        <span class="label">${label}:</span><br/>
+                        <a href="${value}" target="_blank" class="link-bd">Consultar en web Bricodepot</a>
+                      </div>
+                    `;
+                  } else {
+                    html += `
+                      <div class="field">
+                        <span class="label">${label}:</span><br/>
+                        <span>${value}</span>
+                      </div>
+                    `;
+                  }
+                }
+              }
+
+              container.innerHTML = html;
+            }
+          });
+        }
+      });
+    }
+  });
+</script>
+
+</body>
+</html>
