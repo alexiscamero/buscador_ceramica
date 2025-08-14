@@ -3,22 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Buscador Cerámica</title>
+  <title>Buscador de Productos</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0; padding: 0;
       background: #f7f7f7;
     }
+
+    /* Navbar mejorado */
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background: #2c3e50;
+      padding: 0.8em 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .nav-btn {
+      color: white;
+      text-decoration: none;
+      font-size: 0.9em;
+      font-weight: bold;
+      padding: 0.6em 1em;
+      border-radius: 6px;
+      text-align: center;
+      min-width: 70px;
+    }
+
+    .nav-btn:hover {
+      background: #3498db;
+      transform: scale(1.05);
+      transition: all 0.2s ease;
+    }
+
     header {
       background: #2c3e50;
       color: white;
       padding: 1em;
       text-align: center;
+      margin-top: 0;
     }
+
     .container {
       padding: 1em;
     }
+
     input[type="text"] {
       width: 100%;
       padding: 1em;
@@ -28,13 +61,16 @@
       box-sizing: border-box;
       margin-bottom: 1em;
     }
+
     .result {
       background: white;
       padding: 1em;
       margin-bottom: 1em;
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      cursor: pointer;
     }
+
     .result h3 {
       margin: 0 0 0.5em 0;
     }
@@ -42,8 +78,15 @@
 </head>
 <body>
 
+<!-- Navbar con botones -->
+<nav class="navbar">
+  <a href="index.html" class="nav-btn">🔍 Buscador</a>
+  <a href="ubicaciones.html" class="nav-btn">📍 Ubicaciones</a>
+  <a href="showroom.html" class="nav-btn">🏠 Showroom</a>
+</nav>
+
 <header>
-  <h1>Buscador de Productos</h1>
+  <h1>Buscador de Productos Wall & Floor</h1>
 </header>
 
 <div class="container">
@@ -52,12 +95,12 @@
 </div>
 
 <!-- PapaParse -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <!-- Librería para generar códigos QR -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
-  const csvUrl = "ceramica_proyecto.csv"; // Archivo local en la misma carpeta
+  const csvUrl = "ceramica_proyecto.csv";
   let productos = [];
 
   // Cargar y parsear CSV
@@ -65,7 +108,7 @@
     download: true,
     header: true,
     skipEmptyLines: true,
-    delimiter: ";", // Porque tu CSV usa punto y coma
+    delimiter: ";",
     complete: function(results) {
       productos = results.data;
     }
@@ -74,87 +117,79 @@
   const searchInput = document.getElementById("searchInput");
   const resultsDiv = document.getElementById("results");
 
-// Cargar valor previo desde localStorage
-window.addEventListener("load", () => {
-  const savedQuery = localStorage.getItem("searchQuery");
-  if (savedQuery) {
-    searchInput.value = savedQuery;
-    // Mostrar resultados automáticamente si quieres
-    const filtered = productos.filter(p =>
-      p.descrpcion_es?.toLowerCase().includes(savedQuery) ||
-      p.EAN?.toLowerCase().includes(savedQuery)
-    );
-    displayResults(filtered);
-  }
-});
+  // Cargar valor previo desde localStorage
+  window.addEventListener("load", () => {
+    const savedQuery = localStorage.getItem("searchQuery");
+    if (savedQuery) {
+      searchInput.value = savedQuery;
+      const filtered = productos.filter(p =>
+        p.descrpcion_es?.toLowerCase().includes(savedQuery) ||
+        p.EAN?.toLowerCase().includes(savedQuery)
+      );
+      displayResults(filtered);
+    }
+  });
 
-searchInput.addEventListener("input", () => {
-  const query = searchInput.value.toLowerCase();
-  localStorage.setItem("searchQuery", query); // Guardar en localStorage
+  searchInput.addEventListener("input", () => {
+    const query = searchInput.value.toLowerCase();
+    localStorage.setItem("searchQuery", query);
 
-  if (query.length < 2) {
-    resultsDiv.innerHTML = "";
-    return;
-  }
-
-  const filtered = productos.filter(p =>
-    p.descrpcion_es?.toLowerCase().includes(query) ||
-    p.EAN?.toLowerCase().includes(query)
-  );
-
-  displayResults(filtered);
-});
-
-  function displayResults(items) {
-  resultsDiv.innerHTML = "";
-
-  if (items.length === 0) {
-    resultsDiv.innerHTML = "<p>No se encontraron resultados.</p>";
-    return;
-  }
-
-  items.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "result";
-
-    // Contenedor para el QR
-    const qrContainer = document.createElement("div");
-    qrContainer.style.marginTop = "1em";
-    qrContainer.style.textAlign = "center";
-    qrContainer.id = `qr-${item.EAN}`;
-
-    // Información del producto
-    div.innerHTML = `
-      <h3>${item.descrpcion_es || 'Sin descripción'}</h3>
-      <p><strong>EAN:</strong> ${item.EAN || ''}</p>
-      <p><strong>Ubicación Showroom:</strong> ${item.en_showroom === 'SI' ? `${item.rack} - ${item.modulo} - ${item.fila}` : 'No disponible'}</p>
-      <p><strong>Ubicación:</strong> ${item.Ubicacion || 'No disponible'}</p>
-    `;
-
-    // Solo genera QR si tiene EAN
-    if (item.EAN) {
-      new QRCode(qrContainer, {
-        text: item.EAN,
-        width: 128,
-        height: 128,
-        colorDark : "#000000",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
-      });
+    if (query.length < 2) {
+      resultsDiv.innerHTML = "";
+      return;
     }
 
-// Hacer que sea clickeable
-div.style.cursor = "pointer";
-div.style.border = "1px solid #ddd";
+    const filtered = productos.filter(p =>
+      p.descrpcion_es?.toLowerCase().includes(query) ||
+      p.EAN?.toLowerCase().includes(query)
+    );
 
-div.addEventListener("click", () => {
-  window.location.href = `detalles_producto.html?ean=${encodeURIComponent(item.EAN)}`;
-});
-
-div.appendChild(qrContainer);
-resultsDiv.appendChild(div);
+    displayResults(filtered);
   });
-}
+
+  function displayResults(items) {
+    resultsDiv.innerHTML = "";
+
+    if (items.length === 0) {
+      resultsDiv.innerHTML = "<p>No se encontraron resultados.</p>";
+      return;
+    }
+
+    items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "result";
+
+      const qrContainer = document.createElement("div");
+      qrContainer.style.marginTop = "1em";
+      qrContainer.style.textAlign = "center";
+      qrContainer.id = `qr-${item.EAN}`;
+
+      div.innerHTML = `
+        <h3>${item.descrpcion_es || 'Sin descripción'}</h3>
+        <p><strong>EAN:</strong> ${item.EAN || ''}</p>
+        <p><strong>Ubicación Showroom:</strong> ${item.en_showroom === 'SI' ? `${item.rack} - ${item.modulo} - ${item.fila}` : 'No disponible'}</p>
+        <p><strong>Ubicación:</strong> ${item.Ubicacion || 'No disponible'}</p>
+      `;
+
+      if (item.EAN) {
+        new QRCode(qrContainer, {
+          text: item.EAN,
+          width: 128,
+          height: 128,
+          colorDark : "#000000",
+          colorLight : "#ffffff",
+          correctLevel : QRCode.CorrectLevel.H
+        });
+      }
+
+      div.addEventListener("click", () => {
+        window.location.href = `detalles_producto.html?ean=${encodeURIComponent(item.EAN)}`;
+      });
+
+      div.appendChild(qrContainer);
+      resultsDiv.appendChild(div);
+    });
+  }
 </script>
 
 </body>
