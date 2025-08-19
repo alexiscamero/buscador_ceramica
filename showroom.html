@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Showroom</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f7f7f7;
+    }
+
+    /* Navbar mejorado */
+    .navbar {
+      display: flex;
+      justify-content: space-around;
+      background: #2c3e50;
+      padding: 0.8em 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .nav-btn {
+      color: white;
+      text-decoration: none;
+      font-size: 0.9em;
+      font-weight: bold;
+      padding: 0.6em 1em;
+      border-radius: 6px;
+      text-align: center;
+      min-width: 70px;
+    }
+
+    .nav-btn:hover {
+      background: #3498db;
+      transform: scale(1.05);
+      transition: all 0.2s ease;
+    }
+
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1em;
+      text-align: center;
+    }
+
+    .container {
+      padding: 1em;
+    }
+
+    .filters {
+      background: white;
+      padding: 1em;
+      margin: 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .filters label {
+      display: block;
+      margin-bottom: 0.5em;
+      font-weight: bold;
+    }
+
+    .filters select {
+      width: 100%;
+      padding: 0.6em;
+      margin-bottom: 1em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .product-item {
+      background: white;
+      padding: 1em;
+      margin: 0 1em 1em 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      cursor: pointer;
+    }
+
+    .product-item h3 {
+      margin: 0 0 0.5em 0;
+    }
+
+    .product-item p {
+      margin: 0.2em 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar con botones -->
+<nav class="navbar">
+  <a href="index.html" class="nav-btn">🔍 Buscar</a>
+  <a href="ubicaciones.html" class="nav-btn">📍 Almacén</a>
+  <a href="showroom.html" class="nav-btn">🏠 Showroom</a>
+</nav>
+
+<header>
+  <h1>Consulta por Showroom</h1>
+</header>
+
+<div class="container">
+  <div class="filters">
+    <label for="rack">Filtrar por Rack</label>
+    <select id="rack">
+      <option value="">Todos los racks</option>
+    </select>
+
+    <label for="modulo">Filtrar por Módulo</label>
+    <select id="modulo">
+      <option value="">Todos los módulos</option>
+    </select>
+
+    <label for="fila">Filtrar por Fila</label>
+    <select id="fila">
+      <option value="">Todas las filas</option>
+    </select>
+
+    <button id="clearFilter" style="background: #95a5a6; color: white; border: none; padding: 0.6em 1em; border-radius: 4px;">Limpiar filtros</button>
+  </div>
+
+  <div id="products"></div>
+</div>
+
+<!-- PapaParse -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+  const csvUrl = "ceramica_proyecto.csv";
+  let productosShowroom = [];
+
+  // Cargar productos en showroom
+  Papa.parse(csvUrl, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    delimiter: ";",
+    complete: function(results) {
+      productosShowroom = results.data
+        .filter(p => p.en_showroom === "SI")
+        .sort(ordenarPorRackModuloFila); // Ordenar al cargar
+
+      llenarSelects();
+      displayProducts(productosShowroom);
+    }
+  });
+
+  const rackSelect = document.getElementById("rack");
+  const moduloSelect = document.getElementById("modulo");
+  const filaSelect = document.getElementById("fila");
+  const clearBtn = document.getElementById("clearFilter");
+  const productsDiv = document.getElementById("products");
+
+  // Función para extraer número de "RACK 09", "MODULO 1", etc.
+  function extraerNumero(texto, prefijo) {
+    if (!texto) return 0;
+    return parseInt(texto.replace(prefijo, "").trim()) || 0;
+  }
+
+  // Ordenar por Rack → Módulo → Fila (números)
+  function ordenarPorRackModuloFila(a, b) {
+    const rackA = extraerNumero(a.rack, "RACK");
+    const rackB = extraerNumero(b.rack, "RACK");
+
+    if (rackA !== rackB) return rackA - rackB;
+
+    const moduloA = extraerNumero(a.modulo, "MODULO");
+    const moduloB = extraerNumero(b.modulo, "MODULO");
+
+    if (moduloA !== moduloB) return moduloA - moduloB;
+
+    const filaA = extraerNumero(a.fila, "FILA");
+    const filaB = extraerNumero(b.fila, "FILA");
+
+    return filaA - filaB;
+  }
+
+  // Llenar selects con opciones únicas (ordenadas)
+  function llenarSelects() {
+    const racks = [...new Set(productosShowroom.map(p => p.rack))].sort((a, b) => extraerNumero(a, "RACK") - extraerNumero(b, "RACK"));
+    const modulos = [...new Set(productosShowroom.map(p => p.modulo))].sort((a, b) => extraerNumero(a, "MODULO") - extraerNumero(b, "MODULO"));
+    const filas = [...new Set(productosShowroom.map(p => p.fila))].sort((a, b) => extraerNumero(a, "FILA") - extraerNumero(b, "FILA"));
+
+    racks.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r;
+      opt.textContent = r;
+      rackSelect.appendChild(opt);
+    });
+
+    modulos.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      moduloSelect.appendChild(opt);
+    });
+
+    filas.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f;
+      opt.textContent = f;
+      filaSelect.appendChild(opt);
+    });
+  }
+
+  // Filtrar productos
+  function filterProducts() {
+    const rack = rackSelect.value;
+    const modulo = moduloSelect.value;
+    const fila = filaSelect.value;
+
+    let filtered = productosShowroom.filter(p => {
+      return (
+        (rack === "" || p.rack === rack) &&
+        (modulo === "" || p.modulo === modulo) &&
+        (fila === "" || p.fila === fila)
+      );
+    });
+
+    // Mantener orden ascendente
+    filtered.sort(ordenarPorRackModuloFila);
+    displayProducts(filtered);
+  }
+
+  // Mostrar productos
+  function displayProducts(items) {
+    productsDiv.innerHTML = "";
+
+    if (items.length === 0) {
+      productsDiv.innerHTML = "<p>No hay productos en esta combinación.</p>";
+      return;
+    }
+
+    items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "product-item";
+
+      div.innerHTML = `
+        <h3>${item.descrpcion_es}</h3>
+        <p><strong>EAN:</strong> ${item.EAN}</p>
+        <p><strong>Rack:</strong> ${item.rack}</p>
+        <p><strong>Módulo:</strong> ${item.modulo}</p>
+        <p><strong>Fila:</strong> ${item.fila}</p>
+      `;
+
+      // Hacer clickeable
+      div.style.cursor = "pointer";
+      div.addEventListener("click", () => {
+        window.location.href = `index.html?ean=${encodeURIComponent(item.EAN)}`;
+      });
+
+      productsDiv.appendChild(div);
+    });
+  }
+
+  // Eventos
+  rackSelect.addEventListener("change", filterProducts);
+  moduloSelect.addEventListener("change", filterProducts);
+  filaSelect.addEventListener("change", filterProducts);
+  clearBtn.addEventListener("click", () => {
+    rackSelect.value = "";
+    moduloSelect.value = "";
+    filaSelect.value = "";
+    filterProducts();
+  });
+
+  // Mensaje inicial
+  window.addEventListener("load", () => {
+    productsDiv.innerHTML = "<p>Selecciona filtros para ver productos del showroom.</p>";
+  });
+</script>
+
+</body>
+</html>
