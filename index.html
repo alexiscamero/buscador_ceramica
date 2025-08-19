@@ -118,7 +118,19 @@
   const resultsDiv = document.getElementById("results");
 
   // Cargar valor previo desde localStorage o URL
-  window.addEventListener("load", () => {
+let csvLoaded = false;
+
+// Cargar y parsear CSV
+Papa.parse(csvUrl, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  delimiter: ";",
+  complete: function(results) {
+    productos = results.data;
+    csvLoaded = true; // Marcar como cargado
+
+    // Si hay un EAN en la URL, ejecutar búsqueda ahora
     const params = new URLSearchParams(window.location.search);
     const eanFromURL = params.get("ean");
 
@@ -140,7 +152,16 @@
         displayResults(filtered);
       }
     }
-  });
+  }
+});
+
+// También puedes dejar el evento load por si acaso
+window.addEventListener("load", () => {
+  if (csvLoaded) return; // Si ya se cargó, no hacer nada
+
+  // Si el CSV aún no se ha cargado, el Papa.parse lo hará
+  // y el código dentro de `complete` se encargará de todo
+});
 
   searchInput.addEventListener("input", () => {
     const query = searchInput.value.toLowerCase();
@@ -205,4 +226,5 @@
 </script>
 
 </body>
+
 </html>
