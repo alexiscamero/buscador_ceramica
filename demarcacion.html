@@ -238,6 +238,20 @@
     .hidden {
       display: none;
     }
+
+    .back-to-search {
+      display: block;
+      width: 100%;
+      margin-top: 1em;
+      text-align: center;
+      color: #7f8c8d;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+
+    .back-to-search:hover {
+      color: #2c3e50;
+    }
   </style>
 </head>
 <body>
@@ -309,11 +323,8 @@
     </div>
   </div>
 
-  <div class="info-box">
-    <p><strong>Nota:</strong> Los datos se sincronizan automáticamente con GitHub. Los cambios se reflejarán en unos minutos.</p>
-  </div>
-
-  <div class="section github-section">
+  <!-- Sección de sincronización (solo visible después de login) -->
+  <div id="githubSection" class="github-section hidden">
     <h2>Guardar Cambios</h2>
     <p>Guarda tus cambios para que todos los usuarios puedan verlos.</p>
     
@@ -324,6 +335,9 @@
       <p><small>Los cambios se procesan automáticamente. Puedes verificar el estado en <a href="https://github.com/alexiscamero/buscador_ceramica/actions" target="_blank">GitHub Actions</a></small></p>
     </div>
   </div>
+
+  <!-- Botón para volver al buscador -->
+  <a href="index.html" class="back-to-search">← Volver al buscador</a>
 </div>
 
 <!-- PapaParse -->
@@ -732,10 +746,10 @@
           <p><strong>${selectedUser}</strong> ${roleBadge} - Confirmando demarcaciones</p>
         </div>`
       );
-      
-      // Mostrar sección de sincronización para coordinadores/managers
-      document.getElementById('syncBtn').style.display = 'block';
     }
+    
+    // Mostrar sección de sincronización después de login
+    document.getElementById('githubSection').classList.remove('hidden');
     
     // Cargar datos desde GitHub al iniciar sesión
     cargarDesdeGitHub();
@@ -769,4 +783,4 @@
 </script>
 
 </body>
-</html>"/* Build trigger */" 
+</html>
