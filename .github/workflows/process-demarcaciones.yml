@@ -1,0 +1,134 @@
+name: Procesar Demarcaciones
+
+on:
+  push:
+    paths:
+      - 'data/submissions/*.csv'
+  workflow_dispatch:
+
+jobs:
+  process-demarcaciones:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          
+      - name: Instalar dependencias
+        run: npm install csv-parser csv-writer
+        
+      - name: Procesar archivos de demarcación
+        id: process
+        run: |
+          # Script para combinar los CSVs
+          node <<EOF
+          const fs = require('fs');
+          const csv = require('csv-parser');
+          const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+          
+          // Archivo principal
+          const mainFile = 'data/demarca.csv';
+          let mainData = [];
+          
+          // Cargar datos principales
+          try {
+            const mainContent = fs.readFileSync(mainFile, 'utf8');
+            mainData = mainContent.trim().split('\\n').slice(1).map(line => {
+              const [fecha, ean, cantidad, usuario, estado, fechaDem, usuarioDem] = line.split(',');
+              return {
+                fecha: fecha.replace(/"/g, ''),
+                ean: ean.replace(/"/g, ''),
+                cantidad: cantidad.replace(/"/g, ''),
+                usuario: usuario.replace(/"/g, ''),
+                estado: estado.replace(/"/g, ''),
+                fechaDem: fechaDem.replace(/"/g, ''),
+                usuarioDem: usuarioDem.replace(/"/g, '')
+              };
+            }).filter(item => item.ean);
+          } catch (e) {
+            console.log('Archivo principal no encontrado, creando nuevo');
+          }
+          
+          // Procesar archivos de submissions
+          const submissionsDir = 'data/submissions';
+          const files = fs.readdirSync(submissionsDir);
+          
+          files.forEach(file => {
+            if (!file.endsWith('.csv')) return;
+            
+            const filePath = `\${submissionsDir}/\${file}`;
+            const newData = [];
+            
+            fs.createReadStream(filePath)
+              .pipe(csv())
+              .on('data', (row) => {
+                newData.push({
+                  fecha: row['Fecha Registro'],
+                  ean: row['EAN'],
+                  cantidad: row['Cantidad'],
+                  usuario: row['Usuario Registro'],
+                  estado: row['Estado'],
+                  fechaDem: row['Fecha Demarcación'] || '',
+                  usuarioDem: row['Usuario Demarcación'] || ''
+                });
+              })
+              .on('end', () => {
+                // Combinar datos
+                const combined = [...mainData];
+                
+                newData.forEach(item => {
+                  // Si ya existe, actualizar
+                  const existingIndex = combined.findIndex(x => x.ean === item.ean && x.fecha === item.fecha);
+                  if (existingIndex !== -1) {
+                    combined[existingIndex] = item;
+                  } else {
+                    // Si es nuevo, añadir
+                    combined.push(item);
+                  }
+                });
+                
+                // Escribir archivo actualizado
+                const csvWriter = createCsvWriter({
+                  path: mainFile,
+                  header: [
+                    {id: 'fecha', title: 'Fecha Registro'},
+                    {id: 'ean', title: 'EAN'},
+                    {id: 'cantidad', title: 'Cantidad'},
+                    {id: 'usuario', title: 'Usuario Registro'},
+                    {id: 'estado', title: 'Estado'},
+                    {id: 'fechaDem', title: 'Fecha Demarcación'},
+                    {id: 'usuarioDem', title: 'Usuario Demarcación'}
+                  ]
+                });
+                
+                csvWriter.writeRecords(combined)
+                  .then(() => {
+                    console.log(`Archivo actualizado con \${combined.length} registros`);
+                    
+                    // Eliminar archivo de submission
+                    fs.unlinkSync(filePath);
+                  })
+                  .catch(err => {
+                    console.error('Error al escribir archivo:', err);
+                  });
+              });
+          });
+          EOF
+          
+      - name: Commit y Push cambios
+        id: commit
+        run: |
+          git config user.name "Demarcación Bot"
+          git config user.email "bot@demarcacion.com"
+          git add data/demarca.csv
+          git add data/submissions/*
+          git commit -m "Actualización automática de demarcaciones"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
