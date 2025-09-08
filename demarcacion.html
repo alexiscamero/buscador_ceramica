@@ -252,6 +252,19 @@
     .back-to-search:hover {
       color: #2c3e50;
     }
+
+    #scanBtn {
+      padding: 0.6em;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #scanBtn:hover {
+      background: #2980b9;
+    }
   </style>
 </head>
 <body>
@@ -292,7 +305,10 @@
       <h2>Registrar Producto para Demarcación</h2>
       <div class="form-group">
         <label for="eanInput">EAN del Producto</label>
-        <input type="text" id="eanInput" placeholder="Escanee o ingrese el EAN">
+        <div style="display: flex; gap: 0.5em;">
+          <input type="text" id="eanInput" placeholder="Escanee o ingrese el EAN" style="flex: 1;">
+          <button id="scanBtn" title="Escanear código de barras" style="padding: 0.6em; background: #3498db; color: white; border: none; border-radius: 4px;">📷</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="cantidadInput">Cantidad a Demarcar</label>
@@ -336,6 +352,10 @@
     </div>
   </div>
 
+  <!-- Contenedor para el escáner -->
+  <div id="qr-reader" style="display: none; margin: 1em 0; max-width: 100%;"></div>
+  <div id="qr-reader-results" style="display: none; margin: 1em 0;"></div>
+
   <!-- Botón para volver al buscador -->
   <a href="index.html" class="back-to-search">← Volver al buscador</a>
 </div>
@@ -344,6 +364,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <!-- Librería para generar códigos QR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Librería para escanear códigos de barras -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
 <script>
   // Datos iniciales en localStorage
@@ -365,6 +387,9 @@
     branch: "main",
     path: "data/demarca.csv"
   };
+
+  // Variables para el escáner
+  let html5QrcodeScanner = null;
 
   // Obtener datos de demarcación
   function getDemarcaciones() {
@@ -547,6 +572,54 @@
     alert("Producto registrado para demarcación.");
   }
 
+  // Inicializar el escáner
+  function initScanner() {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+    }
+
+    const qrReader = document.getElementById('qr-reader');
+    const results = document.getElementById('qr-reader-results');
+    
+    qrReader.style.display = 'block';
+    results.style.display = 'block';
+    
+    html5QrcodeScanner = new Html5QrcodeScanner(
+      "qr-reader", 
+      { fps: 10, qrbox: 250 },
+      /* verbose= */ false
+    );
+    
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  }
+
+  // Éxito al escanear
+  function onScanSuccess(decodedText, decodedResult) {
+    // Limpiar el texto de caracteres no numéricos
+    const ean = decodedText.replace(/[^0-9]/g, '');
+    
+    if (ean.length >= 8 && ean.length <= 13) {
+      document.getElementById('eanInput').value = ean;
+      
+      // Cerrar el escáner
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+        document.getElementById('qr-reader').style.display = 'none';
+        document.getElementById('qr-reader-results').style.display = 'none';
+      }
+      
+      // Enfocar en el campo de cantidad
+      document.getElementById('cantidadInput').focus();
+    }
+  }
+
+  // Fallo al escanear
+  function onScanFailure(error) {
+    // No hacer nada, el escáner sigue funcionando
+    console.warn(`Error al escanear: ${error}`);
+  }
+
   // Sincronizar con GitHub
   async function sincronizarConGitHub() {
     const statusDiv = document.getElementById('syncStatus');
@@ -588,16 +661,20 @@
       // Codificar en base64
       const content = btoa(unescape(encodeURIComponent(csv)));
 
-      // Obtener token de GitHub
-      const token = prompt("Por favor, ingrese su token de GitHub (solo la primera vez):");
+      // Obtener token de GitHub (ahora se guarda en localStorage)
+      let token = localStorage.getItem('githubToken');
+      
+      // Si no hay token guardado, pedir al usuario
       if (!token) {
-        statusDiv.innerHTML = 'Operación cancelada por el usuario.';
-        statusDiv.className = 'github-status error';
-        return;
+        token = prompt("Por favor, ingrese su token de GitHub (solo la primera vez):");
+        if (!token) {
+          statusDiv.innerHTML = 'Operación cancelada por el usuario.';
+          statusDiv.className = 'github-status error';
+          return;
+        }
+        // Guardar token para futuras subidas
+        localStorage.setItem('githubToken', token);
       }
-
-      // Guardar token para futuras subidas
-      localStorage.setItem('githubToken', token);
 
       // Obtener SHA del archivo actual (si existe)
       const getResponse = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`, {
@@ -637,8 +714,15 @@
       statusDiv.className = 'github-status success';
 
     } catch (error) {
-      statusDiv.innerHTML = `Error al guardar: ${error.message}`;
-      statusDiv.className = 'github-status error';
+      // Si hay error de autenticación, eliminar token guardado
+      if (error.message.includes("Bad credentials")) {
+        localStorage.removeItem('githubToken');
+        statusDiv.innerHTML = 'Token inválido. Por favor, reintroduzca su token de GitHub.';
+        statusDiv.className = 'github-status error';
+      } else {
+        statusDiv.innerHTML = `Error al guardar: ${error.message}`;
+        statusDiv.className = 'github-status error';
+      }
       console.error('Error al sincronizar con GitHub:', error);
     }
   }
@@ -818,6 +902,20 @@
   loginBtn.addEventListener('click', login);
   registrarBtn.addEventListener('click', registrarDemarcacion);
   syncBtn.addEventListener('click', sincronizarConGitHub);
+
+  // Evento del botón de escaneo
+  document.getElementById('scanBtn').addEventListener('click', function() {
+    if (document.getElementById('qr-reader').style.display === 'none') {
+      initScanner();
+    } else {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+        html5QrcodeScanner = null;
+      }
+      document.getElementById('qr-reader').style.display = 'none';
+      document.getElementById('qr-reader-results').style.display = 'none';
+    }
+  });
 
   // Permitir iniciar sesión con Enter
   userName.addEventListener('keypress', function(e) {
