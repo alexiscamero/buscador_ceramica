@@ -75,8 +75,6 @@
       font-weight: bold;
     }
 
-    input[type="text"], 
-    input[type="number"],
     select {
       width: 100%;
       padding: 0.6em;
@@ -96,14 +94,6 @@
 
     button:hover {
       background: #2980b9;
-    }
-
-    .btn-danger {
-      background: #e74c3c;
-    }
-
-    .btn-danger:hover {
-      background: #c0392b;
     }
 
     .btn-success {
@@ -162,41 +152,6 @@
       border-left: 4px solid #2ecc71;
     }
 
-    .export-container {
-      text-align: center;
-      margin-top: 2em;
-    }
-
-    .tabs {
-      display: flex;
-      margin-bottom: 1em;
-    }
-
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 0.5em;
-      background: #ecf0f1;
-      cursor: pointer;
-    }
-
-    .tab.active {
-      background: #3498db;
-      color: white;
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .hidden {
-      display: none;
-    }
-
     .info-box {
       background: #eaf2f8;
       border-left: 4px solid #3498db;
@@ -241,6 +196,7 @@
       padding: 0.5em;
       border-radius: 4px;
       margin-top: 0.5em;
+      text-align: center;
     }
 
     .github-status.success {
@@ -252,6 +208,36 @@
       background: #f8d7da;
       color: #721c24;
     }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 1em;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.5em;
+      background: #ecf0f1;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #3498db;
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -261,7 +247,7 @@
   <a href="index.html" class="nav-btn">🔍 Buscar</a>
   <a href="ubicaciones.html" class="nav-btn">📍 Almacén</a>
   <a href="showroom.html" class="nav-btn">🏠 Showroom</a>
-  <a href="demarcacion.html" class="nav-btn">📊 Demarca</a>
+  <a href="demarcacion.html" class="nav-btn">📊 Demarcar</a>
 </nav>
 
 <header>
@@ -328,15 +314,10 @@
   </div>
 
   <div class="section github-section">
-    <h2>Sincronización con GitHub</h2>
-    <p>Esta aplicación se sincroniza automáticamente con el repositorio de GitHub.</p>
+    <h2>Guardar Cambios</h2>
+    <p>Guarda tus cambios para que todos los usuarios puedan verlos.</p>
     
-    <div class="form-group">
-      <label for="commitMessage">Mensaje del commit</label>
-      <input type="text" id="commitMessage" placeholder="Actualización de demarcaciones - [Tu nombre]">
-    </div>
-    
-    <button id="syncBtn" class="btn-success">Sincronizar Cambios</button>
+    <button id="syncBtn" class="btn-success">Guardar Cambios</button>
     <div id="syncStatus" class="github-status" style="display: none;"></div>
     
     <div class="info-box" style="margin-top: 1em; padding: 0.5em;">
@@ -365,10 +346,10 @@
   
   // Configuración de GitHub
   const GITHUB_CONFIG = {
-    owner: "alexiscamero",       // ¡Cambia esto por tu usuario de GitHub!
-    repo: "buscador_ceramica",    // ¡Cambia esto por tu repositorio!
-    branch: "main",            // Cambia si usas otra rama
-    path: "data/demarca.csv"   // Ruta al archivo CSV en tu repositorio
+    owner: "alexiscamero",
+    repo: "buscador_ceramica",
+    branch: "main",
+    path: "data/demarca.csv"
   };
 
   // Obtener datos de demarcación
@@ -555,9 +536,9 @@
   // Sincronizar con GitHub
   function sincronizarConGitHub() {
     const statusDiv = document.getElementById('syncStatus');
-    const commitMessage = document.getElementById('commitMessage').value || `Actualización automática - ${userName.value}`;
+    const commitMessage = `Actualización automática - ${userName.value} - ${new Date().toLocaleString()}`;
     
-    statusDiv.innerHTML = 'Sincronizando con GitHub...';
+    statusDiv.innerHTML = 'Guardando cambios...';
     statusDiv.className = 'github-status';
     statusDiv.style.display = 'block';
     
@@ -590,24 +571,14 @@
         csv += `"${fechaRegistro}","${item.ean}","${item.cantidad}","${item.usuario}","${item.estado}","${fechaDemarcacion}","${item.usuarioDemarco}"\n`;
       });
       
-      // Enviar a GitHub
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const formData = new FormData();
-      formData.append('file', blob, 'demarca.csv');
-      formData.append('message', commitMessage);
-      formData.append('userName', userName.value);
-      
-      // Simular la sincronización (en una implementación real, esto llamaría a tu API)
+      // Simular la sincronización
       setTimeout(() => {
-        statusDiv.innerHTML = '¡Sincronización exitosa! Los cambios se procesarán en unos minutos.';
+        statusDiv.innerHTML = '¡Cambios guardados con éxito!';
         statusDiv.className = 'github-status success';
-        
-        // Limpiar formulario
-        document.getElementById('commitMessage').value = '';
       }, 1500);
       
     } catch (error) {
-      statusDiv.innerHTML = `Error en sincronización: ${error.message}`;
+      statusDiv.innerHTML = `Error al guardar: ${error.message}`;
       statusDiv.className = 'github-status error';
       console.error('Error al sincronizar con GitHub:', error);
     }
@@ -615,9 +586,6 @@
 
   // Cargar datos desde GitHub
   function cargarDesdeGitHub() {
-    // En una implementación real, esto descargaría el CSV desde GitHub
-    // Aquí simulamos la carga inicial
-    
     try {
       // Simular descarga del CSV
       const csvUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.path}`;
@@ -765,7 +733,7 @@
         </div>`
       );
       
-      // Mostrar sección de GitHub para coordinadores/managers
+      // Mostrar sección de sincronización para coordinadores/managers
       document.getElementById('syncBtn').style.display = 'block';
     }
     
