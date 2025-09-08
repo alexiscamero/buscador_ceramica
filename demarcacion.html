@@ -548,14 +548,14 @@
   }
 
   // Sincronizar con GitHub
-  function sincronizarConGitHub() {
+  async function sincronizarConGitHub() {
     const statusDiv = document.getElementById('syncStatus');
     const commitMessage = `Actualización automática - ${userName.value} - ${new Date().toLocaleString()}`;
     
     statusDiv.innerHTML = 'Guardando cambios...';
     statusDiv.className = 'github-status';
     statusDiv.style.display = 'block';
-    
+
     try {
       // Obtener datos actuales
       const demarcaciones = getDemarcaciones();
@@ -584,13 +584,58 @@
         
         csv += `"${fechaRegistro}","${item.ean}","${item.cantidad}","${item.usuario}","${item.estado}","${fechaDemarcacion}","${item.usuarioDemarco}"\n`;
       });
-      
-      // Simular la sincronización
-      setTimeout(() => {
-        statusDiv.innerHTML = '¡Cambios guardados con éxito!';
-        statusDiv.className = 'github-status success';
-      }, 1500);
-      
+
+      // Codificar en base64
+      const content = btoa(unescape(encodeURIComponent(csv)));
+
+      // Obtener token de GitHub
+      const token = prompt("Por favor, ingrese su token de GitHub (solo la primera vez):");
+      if (!token) {
+        statusDiv.innerHTML = 'Operación cancelada por el usuario.';
+        statusDiv.className = 'github-status error';
+        return;
+      }
+
+      // Guardar token para futuras subidas
+      localStorage.setItem('githubToken', token);
+
+      // Obtener SHA del archivo actual (si existe)
+      const getResponse = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`, {
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      let sha = null;
+      if (getResponse.ok) {
+        const data = await getResponse.json();
+        sha = data.sha;
+      }
+
+      // Subir archivo a GitHub
+      const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: commitMessage,
+          content: content,
+          sha: sha
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Error en la API de GitHub: ${error.message}`);
+      }
+
+      statusDiv.innerHTML = '¡Cambios guardados con éxito!';
+      statusDiv.className = 'github-status success';
+
     } catch (error) {
       statusDiv.innerHTML = `Error al guardar: ${error.message}`;
       statusDiv.className = 'github-status error';
