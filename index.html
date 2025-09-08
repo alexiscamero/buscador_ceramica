@@ -81,7 +81,7 @@
 <!-- Navbar con botones -->
 <nav class="navbar">
   <a href="index.html" class="nav-btn">🔍 Buscar</a>
-  <a href="ubicaciones.html" class="nav-btn">📍 Ubicaciones</a>
+  <a href="ubicaciones.html" class="nav-btn">📍 Almacén</a>
   <a href="showroom.html" class="nav-btn">🏠 Showroom</a>
 </nav>
 
@@ -118,7 +118,7 @@
   const resultsDiv = document.getElementById("results");
 
   // Cargar valor previo desde localStorage o URL
-let csvLoaded = false;
+  let csvLoaded = false;
 
 // Cargar y parsear CSV
 Papa.parse(csvUrl, {
@@ -226,5 +226,4 @@ window.addEventListener("load", () => {
 </script>
 
 </body>
-
 </html>
