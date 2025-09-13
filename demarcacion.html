@@ -808,130 +808,133 @@
     }
   }
 
-// Función corregida para cargar datos desde GitHub
-function cargarDesdeGitHub() {
-  try {
-    const csvUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.path}`;
-    
-    Papa.parse(csvUrl, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        if (!results.data || results.data.length === 0) {
-          console.log('No hay datos en GitHub o archivo vacío');
-          return;
-        }
-        
-        const pendientes = [];
-        const realizadas = [];
-        
-        results.data.forEach(item => {
-          // Limpiar nombres de columnas
-          const cleanItem = {};
-          for (const key in item) {
-            if (item[key] === undefined || item[key] === null) continue;
-            cleanItem[key.trim()] = item[key].trim();
+  // Cargar datos desde GitHub
+  function cargarDesdeGitHub() {
+    try {
+      // Simular descarga del CSV
+      const csvUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.path}`;
+      
+      Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          if (!results.data || results.data.length === 0) {
+            console.log('No hay datos en GitHub o archivo vacío');
+            return;
           }
           
-          // Obtener valores
-          const ean = cleanItem["EAN"] || cleanItem["EAN "];
-          const cantidad = parseInt(cleanItem["Cantidad"] || cleanItem["Cantidad "]) || 1;
-          const usuario = cleanItem["Usuario Registro"] || cleanItem["Usuario Registro "];
-          const estado = cleanItem["Estado"] || cleanItem["Estado "];
+          const pendientes = [];
+          const realizadas = [];
           
-          // Convertir fecha de registro - SOLUCIÓN DEFINITIVA
-          let timestamp = Date.now();
-          try {
-            const fechaRegistroStr = cleanItem["Fecha Registro"] || "";
-            if (fechaRegistroStr && fechaRegistroStr !== "Invalid Date") {
-              // Crear una fecha UTC para evitar problemas de zona horaria
-              const dateParts = fechaRegistroStr.split(/[/\s:,]+/);
-              if (dateParts.length >= 6) {
-                const [day, month, year, hour, minute, second] = dateParts.map(Number);
-                // Usar UTC para evitar cambios de zona horaria
-                timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
-              } else {
-                // Fallback si el formato no es el esperado
-                const parsedDate = new Date(fechaRegistroStr);
-                if (!isNaN(parsedDate.getTime())) {
-                  timestamp = parsedDate.getTime();
-                }
-              }
+          results.data.forEach(item => {
+            // Limpiar nombres de columnas
+            const cleanItem = {};
+            for (const key in item) {
+              if (item[key] === undefined || item[key] === null) continue;
+              cleanItem[key.trim()] = item[key].trim();
             }
-          } catch (e) {
-            console.warn("Error parsing Fecha Registro:", e);
-            timestamp = Date.now();
-          }
-          
-          // Crear objeto base
-          const baseItem = {
-            ean,
-            cantidad,
-            usuario,
-            timestamp
-          };
-          
-          // Agregar a pendientes o realizadas
-          if (estado.toLowerCase().includes("pendiente")) {
-            pendientes.push(baseItem);
-          } else {
-            // Obtener fecha de acción - SOLUCIÓN DEFINITIVA
-            let timestampDemarcacion = Date.now();
+            
+            // Obtener valores
+            const ean = cleanItem["EAN"] || cleanItem["EAN "];
+            const cantidad = parseInt(cleanItem["Cantidad"] || cleanItem["Cantidad "]) || 1;
+            const usuario = cleanItem["Usuario Registro"] || cleanItem["Usuario Registro "];
+            const estado = cleanItem["Estado"] || cleanItem["Estado "];
+            
+            // Convertir fecha de registro
+            let timestamp = Date.now();
             try {
-              const fechaAccionStr = cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "] || "";
-              if (fechaAccionStr && fechaAccionStr !== "Invalid Date") {
-                const dateParts = fechaAccionStr.split(/[/\s:,]+/);
-                if (dateParts.length >= 6) {
-                  const [day, month, year, hour, minute, second] = dateParts.map(Number);
-                  timestampDemarcacion = Date.UTC(year, month - 1, day, hour, minute, second);
-                } else {
-                  const parsedDate = new Date(fechaAccionStr);
+              const fechaRegistroStr = cleanItem["Fecha Registro"] || "";
+              if (fechaRegistroStr && fechaRegistroStr !== "Invalid Date") {
+                const dateFormats = [
+                  fechaRegistroStr,
+                  fechaRegistroStr.replace(',', '').replace(/\s+/g, ' ')
+                ];
+                
+                for (let format of dateFormats) {
+                  const parsedDate = new Date(format);
                   if (!isNaN(parsedDate.getTime())) {
-                    timestampDemarcacion = parsedDate.getTime();
+                    timestamp = parsedDate.getTime();
+                    break;
                   }
                 }
               }
             } catch (e) {
-              console.warn("Error parsing Fecha Acción:", e);
-              timestampDemarcacion = Date.now();
+              console.warn("Error parsing Fecha Registro:", e);
+              timestamp = Date.now();
             }
             
-            const usuarioDemarco = cleanItem["Usuario Acción"] || cleanItem["Usuario Acción "] || usuario;
-            const tipoAccion = cleanItem["Tipo Acción"] || "";
-            const motivoDescarte = cleanItem["Motivo Descarte"] || "";
+            // Crear objeto base
+            const baseItem = {
+              ean,
+              cantidad,
+              usuario,
+              timestamp
+            };
             
-            realizadas.push({
-              ...baseItem,
-              timestampDemarcacion,
-              usuarioDemarco,
-              tipoAccion,
-              motivoDescarte
-            });
-          }
-        });
-        
-        // Guardar datos
-        saveDemarcaciones({
-          pendientes,
-          realizadas
-        });
-        
-        // Actualizar vistas
-        mostrarProductosRegistrados();
-        mostrarDemarcacionesPendientes();
-        mostrarDemarcacionesRealizadas();
-        
-        console.log(`Datos cargados desde GitHub: ${pendientes.length} pendientes, ${realizadas.length} realizadas`);
-      },
-      error: function(error) {
-        console.error("Error al cargar datos de GitHub:", error);
-      }
-    });
-  } catch (error) {
-    console.error("Error al configurar carga desde GitHub:", error);
+            // Agregar a pendientes o realizadas
+            if (estado.toLowerCase().includes("pendiente")) {
+              pendientes.push(baseItem);
+            } else {
+              // Obtener fecha de acción
+              let timestampDemarcacion = Date.now();
+              try {
+                const fechaAccionStr = cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "] || "";
+                if (fechaAccionStr && fechaAccionStr !== "Invalid Date") {
+                  const dateFormats = [
+                    fechaAccionStr,
+                    fechaAccionStr.replace(',', '').replace(/\s+/g, ' ')
+                  ];
+                  
+                  for (let format of dateFormats) {
+                    const parsedDate = new Date(format);
+                    if (!isNaN(parsedDate.getTime())) {
+                      timestampDemarcacion = parsedDate.getTime();
+                      break;
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn("Error parsing Fecha Acción:", e);
+                timestampDemarcacion = Date.now();
+              }
+              
+              const usuarioDemarco = cleanItem["Usuario Acción"] || cleanItem["Usuario Acción "] || usuario;
+              const tipoAccion = cleanItem["Tipo Acción"] || "";
+              const motivoDescarte = cleanItem["Motivo Descarte"] || "";
+              
+              realizadas.push({
+                ...baseItem,
+                timestampDemarcacion,
+                usuarioDemarco,
+                tipoAccion,
+                motivoDescarte
+              });
+            }
+          });
+          
+          // Guardar datos
+          saveDemarcaciones({
+            pendientes,
+            realizadas
+          });
+          
+          // Actualizar vistas
+          mostrarProductosRegistrados();
+          mostrarDemarcacionesPendientes();
+          mostrarDemarcacionesRealizadas();
+          
+          console.log(`Datos cargados desde GitHub: ${pendientes.length} pendientes, ${realizadas.length} realizadas`);
+        },
+        error: function(error) {
+          console.error("Error al cargar datos de GitHub:", error);
+        }
+      });
+    } catch (error) {
+      console.error("Error al configurar carga desde GitHub:", error);
+    }
   }
-}
+
   // Cambiar entre pestañas
   function setupTabs() {
     document.querySelectorAll('.tab').forEach(tab => {
@@ -945,5 +948,94 @@ function cargarDesdeGitHub() {
         document.querySelectorAll('.tab-content').forEach(content => {
           content.classList.remove('active');
         });
-        document
+        document.getElementById(`${tabName}Tab`).classList.add('active');
+      });
+    });
+  }
 
+  // Iniciar sesión
+  function login() {
+    const selectedUser = userName.value;
+    
+    if (!selectedUser) {
+      alert("Por favor, seleccione su nombre.");
+      return;
+    }
+    
+    loginScreen.classList.add('hidden');
+    
+    if (ROLES_USUARIOS[selectedUser] === "vendedor") {
+      vendedorInterface.classList.remove('hidden');
+      mostrarProductosRegistrados();
+      document.querySelector('.container').insertAdjacentHTML('afterbegin', 
+        `<div class="info-box" style="background: #e6f7ff; border-left-color: #1890ff;">
+          <p><strong>${selectedUser}</strong> <span class="user-badge user-vendedor">Vendedor</span> - Registrando productos para demarcación</p>
+        </div>`
+      );
+    } else {
+      coordinadorInterface.classList.remove('hidden');
+      mostrarDemarcacionesPendientes();
+      mostrarDemarcacionesRealizadas();
+      setupTabs();
+      
+      const roleBadge = ROLES_USUARIOS[selectedUser] === "manager" ? 
+        `<span class="user-badge user-manager">Manager</span>` : 
+        `<span class="user-badge user-coordinador">Coordinador</span>`;
+      
+      document.querySelector('.container').insertAdjacentHTML('afterbegin', 
+        `<div class="info-box" style="background: ${ROLES_USUARIOS[selectedUser] === "manager" ? "#fff7e6" : "#f6ffed"}; border-left-color: ${ROLES_USUARIOS[selectedUser] === "manager" ? "#fa8c16" : "#52c41a"};">
+          <p><strong>${selectedUser}</strong> ${roleBadge} - Confirmando demarcaciones</p>
+        </div>`
+      );
+    }
+    
+    // Mostrar sección de sincronización después de login
+    document.getElementById('githubSection').classList.remove('hidden');
+    
+    // Cargar datos desde GitHub al iniciar sesión
+    cargarDesdeGitHub();
+  }
+
+  // Elementos del DOM
+  const loginScreen = document.getElementById("loginScreen");
+  const vendedorInterface = document.getElementById("vendedorInterface");
+  const coordinadorInterface = document.getElementById("coordinadorInterface");
+  const userName = document.getElementById("userName");
+  const loginBtn = document.getElementById("loginBtn");
+  const eanInput = document.getElementById("eanInput");
+  const cantidadInput = document.getElementById("cantidadInput");
+  const registrarBtn = document.getElementById("registrarBtn");
+  const productosRegistrados = document.getElementById("productosRegistrados");
+  const demarcacionesPendientes = document.getElementById("demarcacionesPendientes");
+  const demarcacionesRealizadas = document.getElementById("demarcacionesRealizadas");
+  const syncBtn = document.getElementById("syncBtn");
+
+  // Event listeners
+  loginBtn.addEventListener('click', login);
+  registrarBtn.addEventListener('click', registrarDemarcacion);
+  syncBtn.addEventListener('click', sincronizarConGitHub);
+
+  // Evento del botón de escaneo
+  document.getElementById('scanBtn').addEventListener('click', function() {
+    if (document.getElementById('qr-reader').style.display === 'none') {
+      initScanner();
+    } else {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+        html5QrcodeScanner = null;
+      }
+      document.getElementById('qr-reader').style.display = 'none';
+      document.getElementById('qr-reader-results').style.display = 'none';
+    }
+  });
+
+  // Permitir iniciar sesión con Enter
+  userName.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      login();
+    }
+  });
+</script>
+
+</body>
+</html>
