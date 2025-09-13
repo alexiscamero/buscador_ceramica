@@ -1,4 +1,4 @@
-Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Demarcación,Usuario Demarcación
+Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Acción,Usuario Acción,Tipo Acción,Motivo Descarte
 "13/9/2025, 12:33:48","8421468000210","8","Alexis","Demarcado","13/9/2025, 12:40:24","German"
 "12/9/2025, 19:00:55","5036581058319","1","Mouctar","Demarcado","13/9/2025, 12:34:11","German"
 "12/9/2025, 19:00:31","8432712279467","1","Mouctar","Demarcado","13/9/2025, 12:34:14","German"
