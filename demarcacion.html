@@ -413,12 +413,24 @@
         realizadas: []
       };
     }
-    return JSON.parse(data);
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      console.error("Error parsing localStorage data:", e);
+      return {
+        pendientes: [],
+        realizadas: []
+      };
+    }
   }
 
   // Guardar datos de demarcación
   function saveDemarcaciones(data) {
-    localStorage.setItem(DEMARCACIONES_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(DEMARCACIONES_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error("Error saving to localStorage:", e);
+    }
   }
 
   // Mostrar productos registrados (vendedor)
@@ -846,17 +858,10 @@
             try {
               const fechaRegistroStr = cleanItem["Fecha Registro"] || "";
               if (fechaRegistroStr && fechaRegistroStr !== "Invalid Date") {
-                const dateFormats = [
-                  fechaRegistroStr,
-                  fechaRegistroStr.replace(',', '').replace(/\s+/g, ' ')
-                ];
-                
-                for (let format of dateFormats) {
-                  const parsedDate = new Date(format);
-                  if (!isNaN(parsedDate.getTime())) {
-                    timestamp = parsedDate.getTime();
-                    break;
-                  }
+                // Intentar parsear la fecha
+                const parsedDate = new Date(fechaRegistroStr);
+                if (!isNaN(parsedDate.getTime())) {
+                  timestamp = parsedDate.getTime();
                 }
               }
             } catch (e) {
@@ -881,17 +886,9 @@
               try {
                 const fechaAccionStr = cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "] || "";
                 if (fechaAccionStr && fechaAccionStr !== "Invalid Date") {
-                  const dateFormats = [
-                    fechaAccionStr,
-                    fechaAccionStr.replace(',', '').replace(/\s+/g, ' ')
-                  ];
-                  
-                  for (let format of dateFormats) {
-                    const parsedDate = new Date(format);
-                    if (!isNaN(parsedDate.getTime())) {
-                      timestampDemarcacion = parsedDate.getTime();
-                      break;
-                    }
+                  const parsedDate = new Date(fechaAccionStr);
+                  if (!isNaN(parsedDate.getTime())) {
+                    timestampDemarcacion = parsedDate.getTime();
                   }
                 }
               } catch (e) {
