@@ -104,6 +104,14 @@
       background: #27ae60;
     }
 
+    .btn-danger {
+      background: #e74c3c;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
     .btn-secondary {
       background: #95a5a6;
     }
@@ -150,6 +158,11 @@
     .status-demarcado {
       background: #e8f8f5;
       border-left: 4px solid #2ecc71;
+    }
+
+    .status-descartado {
+      background: #fadbd8;
+      border-left: 4px solid #e74c3c;
     }
 
     .info-box {
@@ -302,7 +315,7 @@
   <!-- Interfaz para vendedores -->
   <div id="vendedorInterface" class="hidden">
     <div class="section">
-      <h2>Registrar Producto para Demarca</h2>
+      <h2>Registrar Producto para Demarcación</h2>
       <div class="form-group">
         <label for="eanInput">EAN del Producto</label>
         <div style="display: flex; gap: 0.5em;">
@@ -433,6 +446,66 @@
     productosRegistrados.innerHTML = html;
   }
 
+  // Confirmar demarcación
+  function confirmarDemarcacion(index) {
+    if (!confirm("¿Está seguro de confirmar la demarcación de este producto?")) {
+      return;
+    }
+    
+    const demarcaciones = getDemarcaciones();
+    const item = demarcaciones.pendientes[index];
+    
+    // Mover de pendientes a realizadas
+    demarcaciones.realizadas.push({
+      ...item,
+      timestampDemarcacion: Date.now(),
+      usuarioDemarco: userName.value,
+      tipoAccion: "confirmado"
+    });
+    
+    demarcaciones.pendientes.splice(index, 1);
+    saveDemarcaciones(demarcaciones);
+    
+    // Actualizar vistas
+    mostrarDemarcacionesPendientes();
+    mostrarDemarcacionesRealizadas();
+    
+    alert("Demarcación confirmada correctamente.");
+  }
+
+  // Descartar demarcación
+  async function descartarDemarcacion(index) {
+    const demarcaciones = getDemarcaciones();
+    const item = demarcaciones.pendientes[index];
+    
+    // Pedir motivo del descarte
+    const motivo = prompt("Motivo del descarte (opcional):", "");
+    
+    if (motivo === null) {
+      return; // Cancelado por el usuario
+    }
+    
+    if (confirm(`¿Está seguro de descartar la demarcación del producto ${item.ean}?`)) {
+      // Mover de pendientes a realizadas con tipo 'descartado'
+      demarcaciones.realizadas.push({
+        ...item,
+        timestampDemarcacion: Date.now(),
+        usuarioDemarco: userName.value,
+        tipoAccion: "descartado",
+        motivoDescarte: motivo || "Sin motivo especificado"
+      });
+      
+      demarcaciones.pendientes.splice(index, 1);
+      saveDemarcaciones(demarcaciones);
+      
+      // Actualizar vistas
+      mostrarDemarcacionesPendientes();
+      mostrarDemarcacionesRealizadas();
+      
+      alert("Demarcación descartada correctamente.");
+    }
+  }
+
   // Mostrar demarcaciones pendientes (coordinador)
   function mostrarDemarcacionesPendientes() {
     const demarcaciones = getDemarcaciones();
@@ -456,6 +529,7 @@
           
           <div class="action-buttons">
             <button class="btn-success confirmar-demarcacion" data-index="${index}">Confirmar Demarcación</button>
+            <button class="btn-danger descartar-demarcacion" data-index="${index}">Descartar</button>
           </div>
         </div>
       `;
@@ -482,6 +556,13 @@
         confirmarDemarcacion(index);
       });
     });
+
+    document.querySelectorAll('.descartar-demarcacion').forEach(button => {
+      button.addEventListener('click', function() {
+        const index = parseInt(this.getAttribute('data-index'));
+        descartarDemarcacion(index);
+      });
+    });
   }
 
   // Mostrar demarcaciones realizadas (coordinador)
@@ -496,44 +577,26 @@
     
     let html = "";
     realizadas.forEach(item => {
+      const tipoTexto = item.tipoAccion === "descartado" ? 
+        `<span style="color: #e74c3c;">Descartado</span>` : 
+        `<span style="color: #27ae60;">Confirmado</span>`;
+      
+      const motivoHtml = item.tipoAccion === "descartado" ? 
+        `<p><strong>Motivo:</strong> ${item.motivoDescarte}</p>` : "";
+      
       html += `
-        <div class="demarcacion-item status-demarcado">
+        <div class="demarcacion-item ${item.tipoAccion === 'descartado' ? 'status-descartado' : 'status-demarcado'}">
           <h3>${item.ean}</h3>
           <p><strong>Cantidad:</strong> ${item.cantidad}</p>
-          <p><strong>Demarcado por:</strong> ${item.usuarioDemarco}</p>
+          <p><strong>${tipoTexto} por:</strong> ${item.usuarioDemarco}</p>
           <p><strong>Fecha registro:</strong> ${new Date(item.timestamp).toLocaleString()}</p>
-          <p><strong>Fecha demarcación:</strong> ${new Date(item.timestampDemarcacion).toLocaleString()}</p>
+          <p><strong>Fecha acción:</strong> ${new Date(item.timestampDemarcacion).toLocaleString()}</p>
+          ${motivoHtml}
         </div>
       `;
     });
     
     demarcacionesRealizadas.innerHTML = html;
-  }
-
-  // Confirmar demarcación
-  function confirmarDemarcacion(index) {
-    if (!confirm("¿Está seguro de confirmar la demarcación de este producto?")) {
-      return;
-    }
-    
-    const demarcaciones = getDemarcaciones();
-    const item = demarcaciones.pendientes[index];
-    
-    // Mover de pendientes a realizadas
-    demarcaciones.realizadas.push({
-      ...item,
-      timestampDemarcacion: Date.now(),
-      usuarioDemarco: userName.value
-    });
-    
-    demarcaciones.pendientes.splice(index, 1);
-    saveDemarcaciones(demarcaciones);
-    
-    // Actualizar vistas
-    mostrarDemarcacionesPendientes();
-    mostrarDemarcacionesRealizadas();
-    
-    alert("Demarcación confirmada correctamente.");
   }
 
   // Registrar producto para demarcación
@@ -637,11 +700,13 @@
           ...item,
           estado: "Pendiente",
           timestampDemarcacion: "",
-          usuarioDemarco: ""
+          usuarioDemarco: "",
+          tipoAccion: "",
+          motivoDescarte: ""
         })),
         ...demarcaciones.realizadas.map(item => ({
           ...item,
-          estado: "Demarcado"
+          estado: item.tipoAccion === "descartado" ? "Descartado" : "Demarcado"
         }))
       ];
       
@@ -649,13 +714,13 @@
       allItems.sort((a, b) => b.timestamp - a.timestamp);
       
       // Preparar CSV
-      let csv = "Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Demarcación,Usuario Demarcación\n";
+      let csv = "Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Acción,Usuario Acción,Tipo Acción,Motivo Descarte\n";
       
       allItems.forEach(item => {
         const fechaRegistro = new Date(item.timestamp).toLocaleString();
-        const fechaDemarcacion = item.timestampDemarcacion ? new Date(item.timestampDemarcacion).toLocaleString() : "";
+        const fechaAccion = item.timestampDemarcacion ? new Date(item.timestampDemarcacion).toLocaleString() : "";
         
-        csv += `"${fechaRegistro}","${item.ean}","${item.cantidad}","${item.usuario}","${item.estado}","${fechaDemarcacion}","${item.usuarioDemarco}"\n`;
+        csv += `"${fechaRegistro}","${item.ean}","${item.cantidad}","${item.usuario}","${item.estado}","${fechaAccion}","${item.usuarioDemarco}","${item.tipoAccion}","${item.motivoDescarte || ""}"\n`;
       });
 
       // Codificar en base64
@@ -782,21 +847,25 @@
             if (estado.toLowerCase().includes("pendiente")) {
               pendientes.push(baseItem);
             } else {
-              // Obtener fecha de demarcación
+              // Obtener fecha de acción
               let timestampDemarcacion = Date.now();
               try {
-                timestampDemarcacion = new Date(cleanItem["Fecha Demarcación"] || cleanItem["Fecha Demarcación "]).getTime();
+                timestampDemarcacion = new Date(cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "]).getTime();
                 if (isNaN(timestampDemarcacion)) timestampDemarcacion = Date.now();
               } catch (e) {
                 timestampDemarcacion = Date.now();
               }
               
-              const usuarioDemarco = cleanItem["Usuario Demarcación"] || cleanItem["Usuario Demarcación "] || usuario;
+              const usuarioDemarco = cleanItem["Usuario Acción"] || cleanItem["Usuario Acción "] || usuario;
+              const tipoAccion = cleanItem["Tipo Acción"] || "";
+              const motivoDescarte = cleanItem["Motivo Descarte"] || "";
               
               realizadas.push({
                 ...baseItem,
                 timestampDemarcacion,
-                usuarioDemarco
+                usuarioDemarco,
+                tipoAccion,
+                motivoDescarte
               });
             }
           });
