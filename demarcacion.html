@@ -285,7 +285,7 @@
 <!-- Navbar con botones -->
 <nav class="navbar">
   <a href="index.html" class="nav-btn">🔍 Buscar</a>
-  <a href="ubicaciones.html" class="nav-btn">📍 Almacén</a>
+  <a href="ubicaciones.html" class="nav-btn">📍 Ubicaciones</a>
   <a href="showroom.html" class="nav-btn">🏠 Showroom</a>
   <a href="demarcacion.html" class="nav-btn">📊 Demarcar</a>
 </nav>
@@ -449,7 +449,7 @@
         <div class="demarcacion-item">
           <h3>${item.ean}</h3>
           <p><strong>Cantidad:</strong> ${item.cantidad}</p>
-          <p><strong>Fecha:</strong> ${new Date(item.timestamp).toLocaleString()}</p>
+          <p><strong>Fecha:</strong> ${item.fechaRegistro}</p>
           <p><strong>Estado:</strong> Pendiente</p>
         </div>
       `;
@@ -470,7 +470,7 @@
     // Mover de pendientes a realizadas
     demarcaciones.realizadas.push({
       ...item,
-      timestampDemarcacion: Date.now(),
+      fechaAccion: item.fechaAccion || new Date().toLocaleString(),
       usuarioDemarco: userName.value,
       tipoAccion: "confirmado"
     });
@@ -501,7 +501,7 @@
       // Mover de pendientes a realizadas con tipo 'descartado'
       demarcaciones.realizadas.push({
         ...item,
-        timestampDemarcacion: Date.now(),
+        fechaAccion: item.fechaAccion || new Date().toLocaleString(),
         usuarioDemarco: userName.value,
         tipoAccion: "descartado",
         motivoDescarte: motivo || "Sin motivo especificado"
@@ -535,7 +535,7 @@
           <h3>${item.ean}</h3>
           <p><strong>Cantidad:</strong> ${item.cantidad}</p>
           <p><strong>Registrado por:</strong> ${item.usuario}</p>
-          <p><strong>Fecha registro:</strong> ${new Date(item.timestamp).toLocaleString()}</p>
+          <p><strong>Fecha registro:</strong> ${item.fechaRegistro}</p>
           
           <div class="qr-container" id="qr-${index}"></div>
           
@@ -601,8 +601,8 @@
           <h3>${item.ean}</h3>
           <p><strong>Cantidad:</strong> ${item.cantidad}</p>
           <p><strong>${tipoTexto} por:</strong> ${item.usuarioDemarco}</p>
-          <p><strong>Fecha registro:</strong> ${new Date(item.timestamp).toLocaleString()}</p>
-          <p><strong>Fecha acción:</strong> ${new Date(item.timestampDemarcacion).toLocaleString()}</p>
+          <p><strong>Fecha registro:</strong> ${item.fechaRegistro}</p>
+          <p><strong>Fecha acción:</strong> ${item.fechaAccion}</p>
           ${motivoHtml}
         </div>
       `;
@@ -632,7 +632,7 @@
       ean: ean,
       cantidad: cantidad,
       usuario: userName.value,
-      timestamp: Date.now()
+      fechaRegistro: new Date().toLocaleString()
     });
     
     saveDemarcaciones(demarcaciones);
@@ -645,54 +645,6 @@
     mostrarProductosRegistrados();
     
     alert("Producto registrado para demarcación.");
-  }
-
-  // Inicializar el escáner
-  function initScanner() {
-    if (html5QrcodeScanner) {
-      html5QrcodeScanner.clear();
-      html5QrcodeScanner = null;
-    }
-
-    const qrReader = document.getElementById('qr-reader');
-    const results = document.getElementById('qr-reader-results');
-    
-    qrReader.style.display = 'block';
-    results.style.display = 'block';
-    
-    html5QrcodeScanner = new Html5QrcodeScanner(
-      "qr-reader", 
-      { fps: 10, qrbox: 250 },
-      /* verbose= */ false
-    );
-    
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-  }
-
-  // Éxito al escanear
-  function onScanSuccess(decodedText, decodedResult) {
-    // Limpiar el texto de caracteres no numéricos
-    const ean = decodedText.replace(/[^0-9]/g, '');
-    
-    if (ean.length >= 8 && ean.length <= 13) {
-      document.getElementById('eanInput').value = ean;
-      
-      // Cerrar el escáner
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear();
-        document.getElementById('qr-reader').style.display = 'none';
-        document.getElementById('qr-reader-results').style.display = 'none';
-      }
-      
-      // Enfocar en el campo de cantidad
-      document.getElementById('cantidadInput').focus();
-    }
-  }
-
-  // Fallo al escanear
-  function onScanFailure(error) {
-    // No hacer nada, el escáner sigue funcionando
-    console.warn(`Error al escanear: ${error}`);
   }
 
   // Sincronizar con GitHub
@@ -711,7 +663,7 @@
         ...demarcaciones.pendientes.map(item => ({
           ...item,
           estado: "Pendiente",
-          timestampDemarcacion: "",
+          fechaAccion: "",
           usuarioDemarco: "",
           tipoAccion: "",
           motivoDescarte: ""
@@ -722,26 +674,19 @@
         }))
       ];
       
-      // Ordenar por fecha
-      allItems.sort((a, b) => b.timestamp - a.timestamp);
-      
       // Preparar CSV
       let csv = "Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Acción,Usuario Acción,Tipo Acción,Motivo Descarte\n";
       
       allItems.forEach(item => {
-        const fechaRegistro = new Date(item.timestamp).toLocaleString();
-        const fechaAccion = item.timestampDemarcacion ? new Date(item.timestampDemarcacion).toLocaleString() : "";
-        
-        csv += `"${fechaRegistro}","${item.ean}","${item.cantidad}","${item.usuario}","${item.estado}","${fechaAccion}","${item.usuarioDemarco}","${item.tipoAccion}","${item.motivoDescarte || ""}"\n`;
+        csv += `"${item.fechaRegistro}","${item.ean}","${item.cantidad}","${item.usuario}","${item.estado}","${item.fechaAccion}","${item.usuarioDemarco}","${item.tipoAccion}","${item.motivoDescarte || ""}"\n`;
       });
 
       // Codificar en base64
       const content = btoa(unescape(encodeURIComponent(csv)));
 
-      // Obtener token de GitHub (ahora se guarda en localStorage)
+      // Obtener token de GitHub
       let token = localStorage.getItem('githubToken');
       
-      // Si no hay token guardado, pedir al usuario
       if (!token) {
         token = prompt("Por favor, ingrese su token de GitHub (solo la primera vez):");
         if (!token) {
@@ -749,11 +694,10 @@
           statusDiv.className = 'github-status error';
           return;
         }
-        // Guardar token para futuras subidas
         localStorage.setItem('githubToken', token);
       }
 
-      // Obtener SHA del archivo actual (si existe)
+      // Obtener SHA del archivo actual
       const getResponse = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`, {
         headers: {
           'Authorization': `token ${token}`,
@@ -791,7 +735,6 @@
       statusDiv.className = 'github-status success';
 
     } catch (error) {
-      // Si hay error de autenticación, eliminar token guardado
       if (error.message.includes("Bad credentials")) {
         localStorage.removeItem('githubToken');
         statusDiv.innerHTML = 'Token inválido. Por favor, reintroduzca su token de GitHub.';
@@ -807,7 +750,6 @@
   // Cargar datos desde GitHub
   function cargarDesdeGitHub() {
     try {
-      // Simular descarga del CSV
       const csvUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.path}`;
       
       Papa.parse(csvUrl, {
@@ -837,48 +779,23 @@
             const usuario = cleanItem["Usuario Registro"] || cleanItem["Usuario Registro "];
             const estado = cleanItem["Estado"] || cleanItem["Estado "];
             
-            // Convertir fecha de registro - SIMPLIFICADO como en la versión funcional
-            let timestamp = Date.now();
-            try {
-              const fechaRegistroStr = cleanItem["Fecha Registro"] || "";
-              if (fechaRegistroStr) {
-                // Usar directamente el constructor de Date
-                const parsedDate = new Date(fechaRegistroStr);
-                if (!isNaN(parsedDate.getTime())) {
-                  timestamp = parsedDate.getTime();
-                }
-              }
-            } catch (e) {
-              console.warn("Error parsing Fecha Registro:", e);
-              timestamp = Date.now();
-            }
+            // Almacenar la fecha TAL CUAL como está en el CSV
+            const fechaRegistro = cleanItem["Fecha Registro"] || "";
             
             // Crear objeto base
             const baseItem = {
               ean,
               cantidad,
               usuario,
-              timestamp
+              fechaRegistro
             };
             
             // Agregar a pendientes o realizadas
             if (estado.toLowerCase().includes("pendiente")) {
               pendientes.push(baseItem);
             } else {
-              // Obtener fecha de acción
-              let timestampDemarcacion = Date.now();
-              try {
-                const fechaAccionStr = cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "] || "";
-                if (fechaAccionStr) {
-                  const parsedDate = new Date(fechaAccionStr);
-                  if (!isNaN(parsedDate.getTime())) {
-                    timestampDemarcacion = parsedDate.getTime();
-                  }
-                }
-              } catch (e) {
-                console.warn("Error parsing Fecha Acción:", e);
-                timestampDemarcacion = Date.now();
-              }
+              // Almacenar fecha de acción TAL CUAL como está en el CSV
+              const fechaAccion = cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "] || "";
               
               const usuarioDemarco = cleanItem["Usuario Acción"] || cleanItem["Usuario Acción "] || usuario;
               const tipoAccion = cleanItem["Tipo Acción"] || "";
@@ -886,7 +803,7 @@
               
               realizadas.push({
                 ...baseItem,
-                timestampDemarcacion,
+                fechaAccion,
                 usuarioDemarco,
                 tipoAccion,
                 motivoDescarte
@@ -916,24 +833,6 @@
     }
   }
 
-  // Cambiar entre pestañas
-  function setupTabs() {
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', function() {
-        // Actualizar clases activas en tabs
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        
-        // Mostrar contenido correcto
-        const tabName = this.getAttribute('data-tab');
-        document.querySelectorAll('.tab-content').forEach(content => {
-          content.classList.remove('active');
-        });
-        document.getElementById(`${tabName}Tab`).classList.add('active');
-      });
-    });
-  }
-
   // Iniciar sesión
   function login() {
     const selectedUser = userName.value;
@@ -948,26 +847,10 @@
     if (ROLES_USUARIOS[selectedUser] === "vendedor") {
       vendedorInterface.classList.remove('hidden');
       mostrarProductosRegistrados();
-      document.querySelector('.container').insertAdjacentHTML('afterbegin', 
-        `<div class="info-box" style="background: #e6f7ff; border-left-color: #1890ff;">
-          <p><strong>${selectedUser}</strong> <span class="user-badge user-vendedor">Vendedor</span> - Registrando productos para demarcación</p>
-        </div>`
-      );
     } else {
       coordinadorInterface.classList.remove('hidden');
       mostrarDemarcacionesPendientes();
       mostrarDemarcacionesRealizadas();
-      setupTabs();
-      
-      const roleBadge = ROLES_USUARIOS[selectedUser] === "manager" ? 
-        `<span class="user-badge user-manager">Manager</span>` : 
-        `<span class="user-badge user-coordinador">Coordinador</span>`;
-      
-      document.querySelector('.container').insertAdjacentHTML('afterbegin', 
-        `<div class="info-box" style="background: ${ROLES_USUARIOS[selectedUser] === "manager" ? "#fff7e6" : "#f6ffed"}; border-left-color: ${ROLES_USUARIOS[selectedUser] === "manager" ? "#fa8c16" : "#52c41a"};">
-          <p><strong>${selectedUser}</strong> ${roleBadge} - Confirmando demarcaciones</p>
-        </div>`
-      );
     }
     
     // Mostrar sección de sincronización después de login
@@ -996,20 +879,6 @@
   registrarBtn.addEventListener('click', registrarDemarcacion);
   syncBtn.addEventListener('click', sincronizarConGitHub);
 
-  // Evento del botón de escaneo
-  document.getElementById('scanBtn').addEventListener('click', function() {
-    if (document.getElementById('qr-reader').style.display === 'none') {
-      initScanner();
-    } else {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear();
-        html5QrcodeScanner = null;
-      }
-      document.getElementById('qr-reader').style.display = 'none';
-      document.getElementById('qr-reader-results').style.display = 'none';
-    }
-  });
-
   // Permitir iniciar sesión con Enter
   userName.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -1017,6 +886,6 @@
     }
   });
 </script>
-
 </body>
 </html>
+
