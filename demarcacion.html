@@ -793,104 +793,134 @@
   }
 
   // Cargar datos desde GitHub
-  function cargarDesdeGitHub() {
-    try {
-      // Simular descarga del CSV
-      const csvUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.path}`;
-      
-      Papa.parse(csvUrl, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          if (!results.data || results.data.length === 0) {
-            console.log('No hay datos en GitHub o archivo vacío');
-            return;
+// Función corregida para cargar datos desde GitHub
+function cargarDesdeGitHub() {
+  try {
+    const csvUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.path}`;
+    
+    Papa.parse(csvUrl, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        if (!results.data || results.data.length === 0) {
+          console.log('No hay datos en GitHub o archivo vacío');
+          return;
+        }
+        
+        const pendientes = [];
+        const realizadas = [];
+        
+        results.data.forEach(item => {
+          // Limpiar nombres de columnas
+          const cleanItem = {};
+          for (const key in item) {
+            if (item[key] === undefined || item[key] === null) continue;
+            cleanItem[key.trim()] = item[key].trim();
           }
           
-          // Procesar datos
-          const pendientes = [];
-          const realizadas = [];
+          // Obtener valores
+          const ean = cleanItem["EAN"] || cleanItem["EAN "];
+          const cantidad = parseInt(cleanItem["Cantidad"] || cleanItem["Cantidad "]) || 1;
+          const usuario = cleanItem["Usuario Registro"] || cleanItem["Usuario Registro "];
+          const estado = cleanItem["Estado"] || cleanItem["Estado "];
           
-          results.data.forEach(item => {
-            // Limpiar nombres de columnas
-            const cleanItem = {};
-            for (const key in item) {
-              if (item[key] === undefined || item[key] === null) continue;
-              cleanItem[key.trim()] = item[key].trim();
-            }
-            
-            // Obtener valores
-            const ean = cleanItem["EAN"] || cleanItem["EAN "];
-            const cantidad = parseInt(cleanItem["Cantidad"] || cleanItem["Cantidad "]) || 1;
-            const usuario = cleanItem["Usuario Registro"] || cleanItem["Usuario Registro "];
-            const estado = cleanItem["Estado"] || cleanItem["Estado "];
-            
-            // Convertir fecha de registro
-            let timestamp = Date.now();
-            try {
-              timestamp = new Date(cleanItem["Fecha Registro"] || cleanItem["Fecha Registro "]).getTime();
-              if (isNaN(timestamp)) timestamp = Date.now();
-            } catch (e) {
-              timestamp = Date.now();
-            }
-            
-            // Crear objeto base
-            const baseItem = {
-              ean,
-              cantidad,
-              usuario,
-              timestamp
-            };
-            
-            // Agregar a pendientes o realizadas
-            if (estado.toLowerCase().includes("pendiente")) {
-              pendientes.push(baseItem);
-            } else {
-              // Obtener fecha de acción
-              let timestampDemarcacion = Date.now();
-              try {
-                timestampDemarcacion = new Date(cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "]).getTime();
-                if (isNaN(timestampDemarcacion)) timestampDemarcacion = Date.now();
-              } catch (e) {
-                timestampDemarcacion = Date.now();
+          // Convertir fecha de registro - CORRECCIÓN PRINCIPAL
+          let timestamp = Date.now();
+          try {
+            const fechaRegistroStr = cleanItem["Fecha Registro"] || "";
+            if (fechaRegistroStr && fechaRegistroStr !== "Invalid Date") {
+              // Intentar múltiples formatos de fecha
+              const dateFormats = [
+                fechaRegistroStr,
+                fechaRegistroStr.replace(' ', 'T') + 'Z', // Formato ISO
+                fechaRegistroStr.replace(',', '') // Quitar comas
+              ];
+              
+              for (let format of dateFormats) {
+                const parsedDate = new Date(format);
+                if (!isNaN(parsedDate.getTime())) {
+                  timestamp = parsedDate.getTime();
+                  break;
+                }
               }
-              
-              const usuarioDemarco = cleanItem["Usuario Acción"] || cleanItem["Usuario Acción "] || usuario;
-              const tipoAccion = cleanItem["Tipo Acción"] || "";
-              const motivoDescarte = cleanItem["Motivo Descarte"] || "";
-              
-              realizadas.push({
-                ...baseItem,
-                timestampDemarcacion,
-                usuarioDemarco,
-                tipoAccion,
-                motivoDescarte
-              });
             }
-          });
+          } catch (e) {
+            console.warn("Error parsing Fecha Registro:", e);
+            timestamp = Date.now();
+          }
           
-          // Guardar datos
-          saveDemarcaciones({
-            pendientes,
-            realizadas
-          });
+          // Crear objeto base
+          const baseItem = {
+            ean,
+            cantidad,
+            usuario,
+            timestamp
+          };
           
-          // Actualizar vistas
-          mostrarProductosRegistrados();
-          mostrarDemarcacionesPendientes();
-          mostrarDemarcacionesRealizadas();
-          
-          console.log(`Datos cargados desde GitHub: ${pendientes.length} pendientes, ${realizadas.length} realizadas`);
-        },
-        error: function(error) {
-          console.error("Error al cargar datos de GitHub:", error);
-        }
-      });
-    } catch (error) {
-      console.error("Error al configurar carga desde GitHub:", error);
-    }
+          // Agregar a pendientes o realizadas
+          if (estado.toLowerCase().includes("pendiente")) {
+            pendientes.push(baseItem);
+          } else {
+            // Obtener fecha de acción - CORRECCIÓN PRINCIPAL
+            let timestampDemarcacion = Date.now();
+            try {
+              const fechaAccionStr = cleanItem["Fecha Acción"] || cleanItem["Fecha Acción "] || "";
+              if (fechaAccionStr && fechaAccionStr !== "Invalid Date") {
+                const dateFormats = [
+                  fechaAccionStr,
+                  fechaAccionStr.replace(' ', 'T') + 'Z',
+                  fechaAccionStr.replace(',', '')
+                ];
+                
+                for (let format of dateFormats) {
+                  const parsedDate = new Date(format);
+                  if (!isNaN(parsedDate.getTime())) {
+                    timestampDemarcacion = parsedDate.getTime();
+                    break;
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn("Error parsing Fecha Acción:", e);
+              timestampDemarcacion = Date.now();
+            }
+            
+            const usuarioDemarco = cleanItem["Usuario Acción"] || cleanItem["Usuario Acción "] || usuario;
+            const tipoAccion = cleanItem["Tipo Acción"] || "";
+            const motivoDescarte = cleanItem["Motivo Descarte"] || "";
+            
+            realizadas.push({
+              ...baseItem,
+              timestampDemarcacion,
+              usuarioDemarco,
+              tipoAccion,
+              motivoDescarte
+            });
+          }
+        });
+        
+        // Guardar datos
+        saveDemarcaciones({
+          pendientes,
+          realizadas
+        });
+        
+        // Actualizar vistas
+        mostrarProductosRegistrados();
+        mostrarDemarcacionesPendientes();
+        mostrarDemarcacionesRealizadas();
+        
+        console.log(`Datos cargados desde GitHub: ${pendientes.length} pendientes, ${realizadas.length} realizadas`);
+      },
+      error: function(error) {
+        console.error("Error al cargar datos de GitHub:", error);
+      }
+    });
+  } catch (error) {
+    console.error("Error al configurar carga desde GitHub:", error);
   }
+}
 
   // Cambiar entre pestañas
   function setupTabs() {
@@ -996,3 +1026,4 @@
 
 </body>
 </html>
+
