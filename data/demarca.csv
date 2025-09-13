@@ -1,7 +1,7 @@
 Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Demarcación,Usuario Demarcación
 "13/9/2025, 12:33:48","8421468000210","8","Alexis","Pendiente","",""
-"12/9/2025, 19:00:55","5036581058319","1","Mouctar","Pendiente","",""
-"12/9/2025, 19:00:31","8432712279467","1","Mouctar","Pendiente","",""
+"12/9/2025, 19:00:55","5036581058319","1","Mouctar","Demarcado","13/9/2025, 12:34:11","German"
+"12/9/2025, 19:00:31","8432712279467","1","Mouctar","Demarcado","13/9/2025, 12:34:14","German"
 "11/9/2025, 15:56:48","8429340100409","7","Alexis","Demarcado","9/11/2025, 19:45:00","Victor"
 "11/9/2025, 15:55:37","5059340433233","3","Alexis","Demarcado","9/11/2025, 19:45:41","Victor"
 "11/9/2025, 15:55:03","8429991953577","2","Alexis","Demarcado","9/11/2025, 19:45:54","Victor"
