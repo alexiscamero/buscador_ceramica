@@ -285,7 +285,7 @@
 <!-- Navbar con botones -->
 <nav class="navbar">
   <a href="index.html" class="nav-btn">🔍 Buscar</a>
-  <a href="ubicaciones.html" class="nav-btn">📍 Ubicaciones</a>
+  <a href="ubicaciones.html" class="nav-btn">📍 Almacén</a>
   <a href="showroom.html" class="nav-btn">🏠 Showroom</a>
   <a href="demarcacion.html" class="nav-btn">📊 Demarcar</a>
 </nav>
@@ -470,7 +470,7 @@
     // Mover de pendientes a realizadas
     demarcaciones.realizadas.push({
       ...item,
-      fechaAccion: item.fechaAccion || new Date().toLocaleString(),
+      fechaAccion: new Date().toLocaleString(),
       usuarioDemarco: userName.value,
       tipoAccion: "confirmado"
     });
@@ -501,7 +501,7 @@
       // Mover de pendientes a realizadas con tipo 'descartado'
       demarcaciones.realizadas.push({
         ...item,
-        fechaAccion: item.fechaAccion || new Date().toLocaleString(),
+        fechaAccion: new Date().toLocaleString(),
         usuarioDemarco: userName.value,
         tipoAccion: "descartado",
         motivoDescarte: motivo || "Sin motivo especificado"
@@ -645,6 +645,54 @@
     mostrarProductosRegistrados();
     
     alert("Producto registrado para demarcación.");
+  }
+
+  // Inicializar el escáner
+  function initScanner() {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+    }
+
+    const qrReader = document.getElementById('qr-reader');
+    const results = document.getElementById('qr-reader-results');
+    
+    qrReader.style.display = 'block';
+    results.style.display = 'block';
+    
+    html5QrcodeScanner = new Html5QrcodeScanner(
+      "qr-reader", 
+      { fps: 10, qrbox: 250 },
+      /* verbose= */ false
+    );
+    
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  }
+
+  // Éxito al escanear
+  function onScanSuccess(decodedText, decodedResult) {
+    // Limpiar el texto de caracteres no numéricos
+    const ean = decodedText.replace(/[^0-9]/g, '');
+    
+    if (ean.length >= 8 && ean.length <= 13) {
+      document.getElementById('eanInput').value = ean;
+      
+      // Cerrar el escáner
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+        document.getElementById('qr-reader').style.display = 'none';
+        document.getElementById('qr-reader-results').style.display = 'none';
+      }
+      
+      // Enfocar en el campo de cantidad
+      document.getElementById('cantidadInput').focus();
+    }
+  }
+
+  // Fallo al escanear
+  function onScanFailure(error) {
+    // No hacer nada, el escáner sigue funcionando
+    console.warn(`Error al escanear: ${error}`);
   }
 
   // Sincronizar con GitHub
@@ -833,6 +881,24 @@
     }
   }
 
+  // Cambiar entre pestañas
+  function setupTabs() {
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        // Actualizar clases activas en tabs
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Mostrar contenido correcto
+        const tabName = this.getAttribute('data-tab');
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.remove('active');
+        });
+        document.getElementById(`${tabName}Tab`).classList.add('active');
+      });
+    });
+  }
+
   // Iniciar sesión
   function login() {
     const selectedUser = userName.value;
@@ -847,10 +913,26 @@
     if (ROLES_USUARIOS[selectedUser] === "vendedor") {
       vendedorInterface.classList.remove('hidden');
       mostrarProductosRegistrados();
+      document.querySelector('.container').insertAdjacentHTML('afterbegin', 
+        `<div class="info-box" style="background: #e6f7ff; border-left-color: #1890ff;">
+          <p><strong>${selectedUser}</strong> <span class="user-badge user-vendedor">Vendedor</span> - Registrando productos para demarcación</p>
+        </div>`
+      );
     } else {
       coordinadorInterface.classList.remove('hidden');
       mostrarDemarcacionesPendientes();
       mostrarDemarcacionesRealizadas();
+      setupTabs();
+      
+      const roleBadge = ROLES_USUARIOS[selectedUser] === "manager" ? 
+        `<span class="user-badge user-manager">Manager</span>` : 
+        `<span class="user-badge user-coordinador">Coordinador</span>`;
+      
+      document.querySelector('.container').insertAdjacentHTML('afterbegin', 
+        `<div class="info-box" style="background: ${ROLES_USUARIOS[selectedUser] === "manager" ? "#fff7e6" : "#f6ffed"}; border-left-color: ${ROLES_USUARIOS[selectedUser] === "manager" ? "#fa8c16" : "#52c41a"};">
+          <p><strong>${selectedUser}</strong> ${roleBadge} - Confirmando demarcaciones</p>
+        </div>`
+      );
     }
     
     // Mostrar sección de sincronización después de login
@@ -879,6 +961,20 @@
   registrarBtn.addEventListener('click', registrarDemarcacion);
   syncBtn.addEventListener('click', sincronizarConGitHub);
 
+  // Evento del botón de escaneo
+  document.getElementById('scanBtn').addEventListener('click', function() {
+    if (document.getElementById('qr-reader').style.display === 'none') {
+      initScanner();
+    } else {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+        html5QrcodeScanner = null;
+      }
+      document.getElementById('qr-reader').style.display = 'none';
+      document.getElementById('qr-reader-results').style.display = 'none';
+    }
+  });
+
   // Permitir iniciar sesión con Enter
   userName.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -886,6 +982,6 @@
     }
   });
 </script>
+
 </body>
 </html>
-
