@@ -1,6 +1,8 @@
 Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Acción,Usuario Acción,Tipo Acción,Motivo Descarte
 "16/9/2025, 21:13:03","5036581058319","1","Alexis","Pendiente","","","",""
 "16/9/2025, 21:19:50","5059340721026","2","Alexis","Pendiente","","","",""
+"17/9/2025, 10:23:44","5036581058319","1","Mouctar","Pendiente","","","",""
+"17/9/2025, 10:24:09","8429178840003","1","Mouctar","Pendiente","","","",""
 "9/12/2025, 19:00:55","5036581058319","1","Mouctar","Demarcado","13/9/2025, 18:04:41","German","",""
 "9/12/2025, 19:00:31","8432712279467","1","Mouctar","Demarcado","13/9/2025, 18:04:41","German","",""
 "9/11/2025, 15:56:48","8429340100409","7","Alexis","Demarcado","11/9/2025, 19:45:00","Victor","",""
@@ -29,4 +31,4 @@ Fecha Registro,EAN,Cantidad,Usuario Registro,Estado,Fecha Acción,Usuario Acció
 "16/9/2025, 14:29:20","5059340969657","1","Alexis","Demarcado","16/9/2025, 20:58:05","Francisco","confirmado",""
 "16/9/2025, 14:29:43","5059340969664","1","Alexis","Demarcado","16/9/2025, 20:58:16","Francisco","confirmado",""
 "16/9/2025, 14:30:04","5059340969640","1","Alexis","Demarcado","16/9/2025, 20:58:19","Francisco","confirmado",""
-"16/9/2025, 21:17:51","4059340721026","2","Alexis","Descartado","16/9/2025, 21:36:30","German","descartado","código erróneo "
+"16/9/2025, 21:17:51","4059340721026","2","Alexis","Descartado","16/9/2025, 21:36:30","German","descartado","código erróneo"
